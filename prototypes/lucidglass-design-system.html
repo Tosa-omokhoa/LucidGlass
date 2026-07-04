@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LucidGlass — Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --canvas: #F3F4F7;
+    --canvas-2: #EAECF1;
+    --surface: #FFFFFF;
+    --glass: rgba(255, 255, 255, 0.55);
+    --glass-border-a: rgba(255, 255, 255, 0.9);
+    --glass-border-b: rgba(75, 95, 238, 0.25);
+    --ink: #12141A;
+    --slate: #5A6270;
+    --slate-muted: #8A90A0;
+    --signal: #4B5FEE;
+    --signal-ink: #2A3AA8;
+    --aqua: #0F9E90;
+    --aqua-bg: #E4F7F4;
+    --border: rgba(18, 20, 26, 0.08);
+    --border-strong: rgba(18, 20, 26, 0.14);
+    --mesh-a: rgba(75, 95, 238, 0.16);
+    --mesh-b: rgba(15, 158, 144, 0.14);
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 22px;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  [data-theme="dark"] {
+    --canvas: #0A0C10;
+    --canvas-2: #10131A;
+    --surface: #14171F;
+    --glass: rgba(20, 23, 31, 0.55);
+    --glass-border-a: rgba(255, 255, 255, 0.10);
+    --glass-border-b: rgba(124, 138, 255, 0.35);
+    --ink: #F2F3F6;
+    --slate: #9AA1AE;
+    --slate-muted: #6B7180;
+    --signal: #7C8AFF;
+    --signal-ink: #C2CAFF;
+    --aqua: #2FD9C7;
+    --aqua-bg: rgba(47, 217, 199, 0.12);
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
+    --mesh-a: rgba(124, 138, 255, 0.20);
+    --mesh-b: rgba(47, 217, 199, 0.14);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    color: var(--ink);
+    background:
+      radial-gradient(560px 400px at 8% 0%, var(--mesh-a), transparent 60%),
+      radial-gradient(600px 460px at 95% 15%, var(--mesh-b), transparent 55%),
+      var(--canvas);
+    background-attachment: fixed;
+    transition: background 0.3s ease, color 0.3s ease;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 64px 32px 120px;
+  }
+
+  header.top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 72px;
+    gap: 24px;
+  }
+
+  .wordmark {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+  }
+  .wordmark span { color: var(--signal); }
+
+  .tagline {
+    font-size: 14px;
+    color: var(--slate);
+    margin-top: 6px;
+    max-width: 360px;
+    line-height: 1.5;
+  }
+
+  .toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--slate);
+    background: var(--glass);
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    user-select: none;
+  }
+  .toggle:hover { border-color: var(--border-strong); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); }
+
+  section { margin-bottom: 80px; }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--slate-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+  }
+
+  .section-desc {
+    color: var(--slate);
+    font-size: 14px;
+    max-width: 560px;
+    line-height: 1.6;
+    margin-bottom: 32px;
+  }
+
+  /* Color tokens */
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+  }
+  .swatch {
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .swatch-color { height: 84px; }
+  .swatch-info { padding: 12px 14px; }
+  .swatch-name { font-size: 13px; font-weight: 500; }
+  .swatch-hex { font-family: var(--font-mono); font-size: 11px; color: var(--slate); margin-top: 2px; }
+  .swatch-use { font-size: 11px; color: var(--slate-muted); margin-top: 6px; line-height: 1.4; }
+
+  /* Type scale */
+  .type-row {
+    display: flex;
+    align-items: baseline;
+    gap: 24px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .type-row:last-child { border-bottom: none; }
+  .type-tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--slate-muted);
+    width: 130px;
+    flex-shrink: 0;
+  }
+  .type-sample-display { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.01em; }
+  .type-sample-body { font-family: var(--font-body); }
+  .type-sample-mono { font-family: var(--font-mono); }
+
+  /* Spacing scale */
+  .space-row { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+  .space-label { font-family: var(--font-mono); font-size: 11px; color: var(--slate); width: 56px; }
+  .space-bar { height: 10px; background: var(--signal); border-radius: 3px; opacity: 0.85; }
+
+  /* Buttons */
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  button {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 11px 20px;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-primary { background: var(--signal); color: #fff; }
+  .btn-primary:hover { background: var(--signal-ink); }
+  .btn-secondary { background: var(--surface); color: var(--ink); border-color: var(--border-strong); }
+  .btn-secondary:hover { border-color: var(--signal); }
+  .btn-ghost { background: transparent; color: var(--slate); }
+  .btn-ghost:hover { color: var(--ink); }
+
+  input[type="text"] {
+    font-family: var(--font-body);
+    font-size: 14px;
+    padding: 11px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--ink);
+    width: 240px;
+  }
+  input[type="text"]:focus {
+    outline: none;
+    border-color: var(--signal);
+    box-shadow: 0 0 0 3px rgba(75, 95, 238, 0.15);
+  }
+
+  /* Glass card */
+  .glass-panel {
+    background: var(--glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    position: relative;
+  }
+  .glass-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-lg);
+    padding: 1px;
+    background: linear-gradient(135deg, var(--glass-border-a), var(--glass-border-b));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .demo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 720px) { .demo-grid { grid-template-columns: 1fr; } }
+
+  /* Empty state demo */
+  .empty-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: var(--aqua-bg);
+    color: var(--aqua);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+  .empty-title { font-family: var(--font-display); font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+  .empty-body { font-size: 13px; color: var(--slate); line-height: 1.6; margin-bottom: 20px; }
+  .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    color: var(--slate);
+    background: var(--surface);
+  }
+
+  /* Results demo */
+  .metric-row { display: flex; gap: 20px; margin-bottom: 20px; }
+  .metric-label { font-size: 12px; color: var(--slate); margin-bottom: 4px; }
+  .metric-value { font-family: var(--font-mono); font-size: 24px; font-weight: 500; }
+  .metric-value.aqua { color: var(--aqua); }
+  .confidence-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 14px;
+  }
+  .confidence-fill { height: 100%; width: 78%; background: var(--aqua); border-radius: 3px; }
+  .confidence-caption { font-size: 12px; color: var(--slate); margin-top: 8px; }
+
+  footer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--slate-muted);
+    margin-top: 40px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <div class="wordmark">Lucid<span>Glass</span></div>
+      <div class="tagline">Phase 0 design system. Every token, type role, and surface the app is built from.</div>
+    </div>
+    <div class="toggle" onclick="toggleTheme()">
+      <span class="dot"></span>
+      <span id="toggle-label">Light mode</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="section-label">01 · Color</div>
+    <h2>Palette</h2>
+    <p class="section-desc">One accent, used with restraint. Aqua is reserved only for positive data readouts, never for actions. Glass is the literal signature material, a translucent surface with blur and a soft gradient rim.</p>
+    <div class="swatch-grid">
+      <div class="swatch">
+        <div class="swatch-color" style="background: var(--canvas);"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Canvas</div>
+          <div class="swatch-hex">#F3F4F7</div>
+          <div class="swatch-use">Page background, beneath the mesh gradient.</div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background: var(--ink);"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Ink</div>
+          <div class="swatch-hex">#12141A</div>
+          <div class="swatch-use">Primary text, headlines.</div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background: var(--slate);"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Slate</div>
+          <div class="swatch-hex">#5A6270</div>
+          <div class="swatch-use">Secondary text, captions, labels.</div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background: var(--signal);"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Signal</div>
+          <div class="swatch-hex">#4B5FEE</div>
+          <div class="swatch-use">The one accent. Primary actions, focus states, links.</div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background: var(--aqua);"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Aqua</div>
+          <div class="swatch-hex">#0F9E90</div>
+          <div class="swatch-use">Positive metrics and data only. Never on controls.</div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(75,95,238,0.35)), var(--glass); backdrop-filter: blur(4px);"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Glass</div>
+          <div class="swatch-hex">rgba blur</div>
+          <div class="swatch-use">The signature surface. Frosted panels with a gradient rim light.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label">02 · Type</div>
+    <h2>Scale</h2>
+    <p class="section-desc">Space Grotesk carries the personality on headlines and results. Inter handles all body copy and UI labels. IBM Plex Mono is reserved for anything numeric, so metrics and tables align cleanly.</p>
+    <div>
+      <div class="type-row">
+        <div class="type-tag">Display / 40</div>
+        <div class="type-sample-display" style="font-size: 40px;">Train a model on your data</div>
+      </div>
+      <div class="type-row">
+        <div class="type-tag">Display / 24</div>
+        <div class="type-sample-display" style="font-size: 24px;">What did the model learn?</div>
+      </div>
+      <div class="type-row">
+        <div class="type-tag">Body / 16</div>
+        <div class="type-sample-body" style="font-size: 16px;">Upload a CSV, pick a target column, and train a real model without writing a line of code.</div>
+      </div>
+      <div class="type-row">
+        <div class="type-tag">Body / 13, Slate</div>
+        <div class="type-sample-body" style="font-size: 13px; color: var(--slate);">Your data never leaves your browser.</div>
+      </div>
+      <div class="type-row">
+        <div class="type-tag">Mono / 14</div>
+        <div class="type-sample-mono" style="font-size: 14px;">accuracy 0.847 · f1 0.812</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label">03 · Spacing</div>
+    <h2>Scale</h2>
+    <p class="section-desc">A restrained set of steps, used consistently for padding and gaps rather than arbitrary pixel values.</p>
+    <div>
+      <div class="space-row"><span class="space-label">4</span><div class="space-bar" style="width: 4px;"></div></div>
+      <div class="space-row"><span class="space-label">8</span><div class="space-bar" style="width: 8px;"></div></div>
+      <div class="space-row"><span class="space-label">12</span><div class="space-bar" style="width: 12px;"></div></div>
+      <div class="space-row"><span class="space-label">16</span><div class="space-bar" style="width: 16px;"></div></div>
+      <div class="space-row"><span class="space-label">24</span><div class="space-bar" style="width: 24px;"></div></div>
+      <div class="space-row"><span class="space-label">32</span><div class="space-bar" style="width: 32px;"></div></div>
+      <div class="space-row"><span class="space-label">48</span><div class="space-bar" style="width: 48px;"></div></div>
+      <div class="space-row"><span class="space-label">64</span><div class="space-bar" style="width: 64px;"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label">04 · Controls</div>
+    <h2>Buttons and inputs</h2>
+    <p class="section-desc">One filled button per view at most. Secondary and ghost handle everything else.</p>
+    <div class="row" style="margin-bottom: 20px;">
+      <button class="btn-primary">Train model</button>
+      <button class="btn-secondary">Upload another file</button>
+      <button class="btn-ghost">Cancel</button>
+    </div>
+    <div class="row">
+      <input type="text" placeholder="Search columns" />
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label">05 · Signature</div>
+    <h2>Glass panels</h2>
+    <p class="section-desc">The material the whole app is named after. Frosted, translucent, with a soft gradient edge that catches light. Used for the two states a user sees most: the empty upload screen, and the results screen.</p>
+    <div class="demo-grid">
+      <div class="glass-panel">
+        <div class="empty-icon">↑</div>
+        <div class="empty-title">Start with a dataset</div>
+        <div class="empty-body">Drop a CSV, or try one of ours to see the full loop in one click. Nothing you upload leaves this browser.</div>
+        <div class="chip-row">
+          <span class="chip">Titanic</span>
+          <span class="chip">Iris</span>
+          <span class="chip">Wine quality</span>
+        </div>
+      </div>
+      <div class="glass-panel">
+        <div class="metric-row">
+          <div>
+            <div class="metric-label">Accuracy</div>
+            <div class="metric-value aqua">84.7%</div>
+          </div>
+          <div>
+            <div class="metric-label">F1 score</div>
+            <div class="metric-value">0.81</div>
+          </div>
+        </div>
+        <div class="empty-body" style="margin-bottom: 0;">Tenure under 12 months predicts churn about three times more often than longer tenured accounts.</div>
+        <div class="confidence-bar"><div class="confidence-fill"></div></div>
+        <div class="confidence-caption">This pattern is strong.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>LucidGlass · Phase 0 design system</footer>
+
+</div>
+
+<script>
+  function toggleTheme() {
+    const root = document.documentElement;
+    const isDark = root.getAttribute('data-theme') === 'dark';
+    root.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    document.getElementById('toggle-label').textContent = isDark ? 'Light mode' : 'Dark mode';
+  }
+</script>
+</body>
+</html>

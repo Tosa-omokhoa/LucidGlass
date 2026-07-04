@@ -1,0 +1,1811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LucidGlass</title>
+<meta name="description" content="Train a real machine learning model on your CSV, right in your browser. No upload, no server, no code, and your data never leaves your device.">
+<meta property="og:title" content="LucidGlass">
+<meta property="og:description" content="Train a real machine learning model on your CSV, right in your browser. No upload, no server, no code.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%237C8AFF'/%3E%3Cstop offset='100%25' stop-color='%232FD9C7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Crect x='10' y='10' width='16' height='9' rx='6' fill='white' fill-opacity='0.55'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --canvas: #F3F4F7;
+    --surface: #FFFFFF;
+    --glass: rgba(255, 255, 255, 0.55);
+    --glass-border-a: rgba(255, 255, 255, 0.9);
+    --glass-border-b: rgba(75, 95, 238, 0.25);
+    --ink: #12141A;
+    --slate: #5A6270;
+    --slate-muted: #8A90A0;
+    --signal: #4B5FEE;
+    --signal-ink: #2A3AA8;
+    --aqua: #0F9E90;
+    --aqua-bg: #E4F7F4;
+    --amber: #B87A0A;
+    --amber-bg: #FBF0DD;
+    --border: rgba(18, 20, 26, 0.08);
+    --border-strong: rgba(18, 20, 26, 0.14);
+    --mesh-a: rgba(75, 95, 238, 0.16);
+    --mesh-b: rgba(15, 158, 144, 0.14);
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 22px;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  [data-theme="dark"] {
+    --canvas: #0A0C10;
+    --surface: #14171F;
+    --glass: rgba(20, 23, 31, 0.55);
+    --glass-border-a: rgba(255, 255, 255, 0.10);
+    --glass-border-b: rgba(124, 138, 255, 0.35);
+    --ink: #F2F3F6;
+    --slate: #9AA1AE;
+    --slate-muted: #6B7180;
+    --signal: #7C8AFF;
+    --signal-ink: #C2CAFF;
+    --aqua: #2FD9C7;
+    --aqua-bg: rgba(47, 217, 199, 0.12);
+    --amber: #E0A93E;
+    --amber-bg: rgba(224, 169, 62, 0.12);
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
+    --mesh-a: rgba(124, 138, 255, 0.20);
+    --mesh-b: rgba(47, 217, 199, 0.14);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    color: var(--ink);
+    background:
+      radial-gradient(560px 400px at 8% 0%, var(--mesh-a), transparent 60%),
+      radial-gradient(600px 460px at 95% 15%, var(--mesh-b), transparent 55%),
+      var(--canvas);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 48px 28px 100px; }
+
+  header.top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 36px; }
+  .logo-panel {
+    background: var(--glass); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    border-radius: 14px; padding: 10px 18px; position: relative;
+  }
+  .logo-panel::before {
+    content: ""; position: absolute; inset: 0; border-radius: 14px; padding: 1px;
+    background: linear-gradient(135deg, var(--glass-border-a), var(--glass-border-b));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+  }
+  .logo-text { font-family: var(--font-display); font-weight: 600; font-size: 22px; letter-spacing: -0.02em; }
+  .logo-text span { color: var(--signal); }
+  .toggle {
+    display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--slate);
+    background: var(--glass); border: 1px solid var(--border); padding: 8px 14px; border-radius: 999px;
+    cursor: pointer; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); user-select: none;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); }
+
+  .steps { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  .step {
+    font-family: var(--font-mono); font-size: 11px; color: var(--slate-muted); white-space: nowrap;
+    padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
+  }
+  .step.active { color: var(--signal); border-color: var(--signal); }
+  .step.done { color: var(--aqua); border-color: var(--aqua); }
+
+  .glass-panel {
+    background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-radius: var(--radius-lg); padding: 32px; position: relative; margin-bottom: 20px;
+  }
+  .glass-panel::before {
+    content: ""; position: absolute; inset: 0; border-radius: var(--radius-lg); padding: 1px;
+    background: linear-gradient(135deg, var(--glass-border-a), var(--glass-border-b));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+  }
+
+  #dropzone { cursor: pointer; text-align: center; padding: 56px 32px; transition: transform 0.15s ease; }
+  #dropzone.drag { transform: scale(1.01); }
+  .drop-icon {
+    width: 48px; height: 48px; border-radius: 13px; background: var(--aqua-bg); color: var(--aqua);
+    display: flex; align-items: center; justify-content: center; font-size: 20px; margin: 0 auto 18px;
+  }
+  .drop-title { font-family: var(--font-display); font-size: 19px; font-weight: 600; margin-bottom: 8px; }
+  .drop-body { font-size: 13px; color: var(--slate); line-height: 1.6; max-width: 380px; margin: 0 auto 22px; }
+  .chip-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .chip {
+    font-size: 12px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border-strong);
+    color: var(--slate); background: var(--surface); cursor: pointer; transition: border-color 0.15s ease;
+  }
+  .chip:hover { border-color: var(--signal); color: var(--ink); }
+  #fileInput { display: none; }
+  .hidden { display: none !important; }
+
+  .filebar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+  .filebar-name { font-family: var(--font-mono); font-size: 13px; word-break: break-all; }
+  .filebar-meta { font-size: 12px; color: var(--slate); margin-top: 3px; }
+  .filebar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-ghost {
+    font-family: var(--font-body); font-size: 13px; color: var(--slate); background: transparent;
+    border: 1px solid var(--border-strong); padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-ghost:hover { color: var(--ink); border-color: var(--signal); }
+
+  .badge-row { display: flex; gap: 10px; margin-bottom: 24px; }
+  .badge { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
+  .badge-label { font-size: 11px; color: var(--slate-muted); margin-bottom: 4px; }
+  .badge-value { font-family: var(--font-mono); font-size: 18px; }
+  .badge-value.warn { color: var(--amber); }
+  .badge-value.ok { color: var(--aqua); }
+
+  table { width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 12.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { font-family: var(--font-mono); font-weight: 500; color: var(--slate); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  td { font-family: var(--font-mono); }
+  .type-tag { display: inline-block; font-family: var(--font-body); font-size: 10px; padding: 2px 7px; border-radius: 5px; margin-left: 8px; vertical-align: middle; }
+  .type-numeric { background: var(--aqua-bg); color: var(--aqua); }
+  .type-categorical { background: rgba(75,95,238,0.12); color: var(--signal); }
+  .type-boolean { background: rgba(75,95,238,0.12); color: var(--signal); }
+  .type-date { background: var(--amber-bg); color: var(--amber); }
+  .null-flag { color: var(--amber); font-size: 10px; margin-left: 6px; }
+
+  /* Column rail, the magnifying carousel */
+  .rail-label { font-size: 12px; color: var(--slate); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .rail-hint { font-size: 11px; color: var(--slate-muted); }
+  .rail-outer { position: relative; margin-bottom: 20px; }
+  .rail-fade-left, .rail-fade-right { position: absolute; top: 0; bottom: 0; width: 34px; z-index: 5; pointer-events: none; opacity: 0.55; }
+  .rail-fade-left { left: 0; background: linear-gradient(90deg, var(--canvas) 0%, transparent 100%); }
+  .rail-fade-right { right: 0; background: linear-gradient(270deg, var(--canvas) 0%, transparent 100%); }
+  [data-theme="dark"] .rail-fade-left { background: linear-gradient(90deg, #0A0C10 0%, transparent 100%); }
+  [data-theme="dark"] .rail-fade-right { background: linear-gradient(270deg, #0A0C10 0%, transparent 100%); }
+  .rail { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; -ms-overflow-style: none; padding: 30px 0; }
+  .rail::-webkit-scrollbar { display: none; }
+  .col-card {
+    flex: 0 0 148px; scroll-snap-align: center; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: 16px 14px; transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    will-change: transform, opacity;
+  }
+  .col-name { font-family: var(--font-display); font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 8px; }
+  .col-type-tag { display: inline-block; font-family: var(--font-body); font-size: 10px; padding: 3px 8px; border-radius: 5px; margin-bottom: 4px; transition: filter 0.15s ease; }
+  .col-null { font-size: 10px; color: var(--amber); margin-top: 4px; }
+  .col-values { margin-top: 12px; display: flex; flex-direction: column; gap: 7px; }
+  .col-value { font-family: var(--font-mono); font-size: 11px; color: var(--slate); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rail-nav { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; }
+  .nav-btn {
+    width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface);
+    color: var(--slate); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;
+    transition: border-color 0.15s ease;
+  }
+  .nav-btn:hover { border-color: var(--signal); color: var(--ink); }
+
+  .target-section { margin-top: 8px; }
+  .target-label { font-size: 12px; color: var(--slate); margin-bottom: 10px; }
+  .target-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .target-option {
+    font-family: var(--font-mono); font-size: 12.5px; padding: 8px 14px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong); background: var(--surface); cursor: pointer; transition: all 0.15s ease;
+  }
+  .target-option:hover { border-color: var(--signal); }
+  .target-option.selected { background: var(--signal); color: #fff; border-color: var(--signal); }
+
+  .continue-row { margin-top: 28px; text-align: right; }
+  button.btn-primary {
+    font-family: var(--font-body); font-size: 14px; font-weight: 500; padding: 12px 24px; border-radius: var(--radius-sm);
+    border: none; background: var(--signal); color: #fff; cursor: pointer; opacity: 0.4; pointer-events: none;
+    transition: opacity 0.15s ease, background 0.15s ease;
+  }
+  button.btn-primary.active { opacity: 1; pointer-events: auto; }
+  button.btn-primary.active:hover { background: var(--signal-ink); }
+
+  .algo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 8px; }
+  @media (max-width: 640px) { .algo-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) { #comparePanels { grid-template-columns: 1fr !important; } }
+  .algo-card {
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-md);
+    padding: 20px; cursor: pointer; transition: all 0.15s ease;
+  }
+  .algo-card:hover { border-color: var(--signal); }
+  .algo-card.selected { border-color: var(--signal); box-shadow: 0 0 0 3px rgba(75,95,238,0.15); }
+  .algo-name { font-family: var(--font-display); font-weight: 600; font-size: 16px; margin-bottom: 8px; }
+  .algo-desc { font-size: 12.5px; color: var(--slate); line-height: 1.6; }
+  .feature-note { font-size: 12px; color: var(--slate-muted); margin: 20px 0; }
+
+  .metric-row { display: flex; gap: 20px; margin-bottom: 22px; }
+  .metric-label { font-size: 12px; color: var(--slate); margin-bottom: 4px; }
+  .metric-value { font-family: var(--font-mono); font-size: 26px; font-weight: 500; }
+  .metric-value.aqua { color: var(--aqua); }
+
+  .importance-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .importance-name { font-family: var(--font-mono); font-size: 12px; width: 130px; flex-shrink: 0; color: var(--slate); }
+  .importance-track { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .importance-fill { height: 100%; background: var(--signal); border-radius: 4px; }
+  .importance-pct { font-family: var(--font-mono); font-size: 11px; color: var(--slate-muted); width: 40px; text-align: right; }
+
+  .summary-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 18px 20px; margin: 24px 0; font-size: 13.5px; line-height: 1.7; }
+  .confidence-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 14px; }
+  .confidence-fill { height: 100%; background: var(--aqua); border-radius: 3px; }
+  .confidence-caption { font-size: 12px; color: var(--slate); margin-top: 8px; }
+
+  footer { text-align: center; font-size: 12px; color: var(--slate-muted); margin-top: 40px; }
+
+  #loadingScreen {
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(560px 400px at 8% 0%, var(--mesh-a), transparent 60%),
+      radial-gradient(600px 460px at 95% 15%, var(--mesh-b), transparent 55%),
+      var(--canvas);
+    transition: opacity 0.6s ease;
+  }
+  #loadingScreen.fade-out { opacity: 0; pointer-events: none; }
+  .loading-logo { animation: loadingPulse 1.8s ease-in-out infinite; }
+  @keyframes loadingPulse {
+    0%, 100% { opacity: 0.82; transform: scale(0.99); }
+    50% { opacity: 1; transform: scale(1.02); }
+  }
+
+  /* Data Insights */
+  .insight-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px 16px 14px; }
+  .insight-name { font-family: var(--font-display); font-weight: 600; font-size: 13.5px; margin-bottom: 12px; }
+  .insight-stats { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-bottom: 14px; }
+  .insight-stat { font-size: 10.5px; color: var(--slate); }
+  .insight-stat b { font-family: var(--font-mono); color: var(--ink); font-weight: 500; display: block; font-size: 13px; margin-top: 2px; }
+  .hist-row { display: flex; align-items: flex-end; gap: 3px; height: 42px; }
+  .hist-bar { flex: 1; background: var(--signal); border-radius: 2px 2px 0 0; opacity: 0.85; }
+  .cat-row { display: flex; flex-direction: column; gap: 8px; }
+  .cat-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--slate); margin-bottom: 3px; }
+  .cat-bar-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .cat-bar-fill { height: 100%; background: var(--signal); border-radius: 3px; }
+  .corr-header { font-family: var(--font-mono); font-size: 10px; color: var(--slate); padding: 5px 8px; white-space: nowrap; }
+  .corr-cell { width: 54px; height: 30px; text-align: center; font-family: var(--font-mono); font-size: 10.5px; border: 1px solid var(--border); color: var(--ink); }
+</style>
+</head>
+<body>
+<div id="loadingScreen">
+  <div class="logo-panel loading-logo" style="padding: 16px 26px;">
+    <div class="logo-text" style="font-size: 28px;">Lucid<span>Glass</span></div>
+  </div>
+</div>
+<div class="wrap">
+
+  <header class="top">
+    <div class="logo-panel"><div class="logo-text">Lucid<span>Glass</span></div></div>
+    <div class="toggle" onclick="toggleTheme()">
+      <span class="dot"></span>
+      <span id="toggle-label">Light mode</span>
+    </div>
+  </header>
+
+  <div class="steps">
+    <div class="step" id="step1">1. Upload</div>
+    <div class="step" id="step2">2. Target</div>
+    <div class="step" id="step3">3. Algorithm</div>
+    <div class="step" id="step4">4. Results</div>
+  </div>
+
+  <div id="uploadStage" class="glass-panel">
+    <div id="dropzone">
+      <div class="drop-icon">&#8593;</div>
+      <div class="drop-title">Start with a dataset</div>
+      <div class="drop-body">Drop a CSV, or try one of ours to see the full loop in one click. Nothing you upload leaves this browser.</div>
+      <div class="chip-row">
+        <span class="chip" onclick="loadSample('titanic', event)">Titanic &middot; 40 rows</span>
+        <span class="chip" onclick="loadSample('iris', event)">Iris &middot; 45 rows</span>
+        <span class="chip" onclick="loadSample('wine', event)">Wine quality &middot; 36 rows</span>
+        <span class="chip" onclick="document.getElementById('fileInput').click()">Choose file</span>
+      </div>
+      <input type="file" id="fileInput" accept=".csv" />
+    </div>
+  </div>
+
+  <div id="resultStage" class="glass-panel hidden">
+    <div class="filebar">
+      <div>
+        <div class="filebar-name" id="fileName"></div>
+        <div class="filebar-meta" id="fileMeta"></div>
+      </div>
+      <div class="filebar-actions">
+        <button class="btn-ghost" onclick="openInsights()">View data insights</button>
+        <button class="btn-ghost" onclick="resetUpload()">Upload another file</button>
+      </div>
+    </div>
+    <div class="badge-row">
+      <div class="badge"><div class="badge-label">Rows</div><div class="badge-value" id="statRows">—</div></div>
+      <div class="badge"><div class="badge-label">Columns</div><div class="badge-value" id="statCols">—</div></div>
+      <div class="badge"><div class="badge-label">Duplicate rows</div><div class="badge-value" id="statDupes">—</div></div>
+      <div class="badge"><div class="badge-label">Data health</div><div class="badge-value" id="statHealth">—</div></div>
+    </div>
+    <div id="healthDetail" class="hidden" style="font-size: 11.5px; color: var(--slate); margin-top: -14px; margin-bottom: 20px; line-height: 1.6;"></div>
+    <div class="rail-label">
+      <span>Scroll to browse columns</span>
+      <span class="rail-hint">the centered column is in focus</span>
+    </div>
+    <div class="rail-outer">
+      <div class="rail-fade-left"></div>
+      <div class="rail-fade-right"></div>
+      <div class="rail" id="colRail"></div>
+    </div>
+    <div class="rail-nav">
+      <div class="nav-btn" onclick="scrollRail(-1)">&#8592;</div>
+      <div class="nav-btn" onclick="scrollRail(1)">&#8594;</div>
+    </div>
+    <div class="target-section">
+      <div class="target-label">Select a target column to predict</div>
+      <div class="target-grid" id="targetGrid"></div>
+      <div id="targetNote" class="hidden" style="margin-top: 14px; border-radius: var(--radius-sm); padding: 12px 14px; font-size: 12.5px; line-height: 1.6;"></div>
+    </div>
+    <div class="continue-row">
+      <button class="btn-primary" id="continueToAlgo">Continue to algorithm selection</button>
+    </div>
+  </div>
+
+  <div id="algoStage" class="glass-panel hidden">
+    <div class="target-label">Choose an algorithm to train on <span id="algoTargetName" style="color: var(--ink); font-family: var(--font-mono);"></span></div>
+    <div id="compareToggleWrap" class="hidden" style="margin-bottom: 16px;">
+      <div class="toggle" onclick="toggleCompareMode()">
+        <span class="dot" id="compareDot"></span>
+        <span id="compareLabel">Compare two algorithms</span>
+      </div>
+    </div>
+    <div class="algo-grid" id="algoGrid"></div>
+    <div class="feature-note" id="featureNote"></div>
+    <div class="continue-row">
+      <button class="btn-primary" id="trainBtn">Train model</button>
+    </div>
+  </div>
+
+  <div id="resultsStage" class="glass-panel hidden">
+    <div class="metric-row">
+      <div><div class="metric-label" id="metricAccuracyLabel">Accuracy</div><div class="metric-value aqua" id="metricAccuracy">—</div></div>
+      <div><div class="metric-label">Test rows</div><div class="metric-value" id="metricTestRows">—</div></div>
+      <div><div class="metric-label">Algorithm</div><div class="metric-value" id="metricAlgo" style="font-size:18px;">—</div></div>
+    </div>
+    <div class="target-label">Feature importance</div>
+    <div id="importanceList" style="margin-bottom: 20px;"></div>
+    <div class="summary-box" id="summaryText"></div>
+    <div class="confidence-bar"><div class="confidence-fill" id="confidenceFill"></div></div>
+    <div class="confidence-caption" id="confidenceCaption"></div>
+    <div class="continue-row" style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
+      <button class="btn-ghost" onclick="exportPDF()">Export PDF summary</button>
+      <button class="btn-ghost" onclick="resetUpload()">Start over with a new file</button>
+    </div>
+  </div>
+
+  <div id="resultsCompareStage" class="glass-panel hidden">
+    <div class="target-label" style="margin-bottom: 16px;">Comparing algorithms on <span id="compareTargetName" style="color: var(--ink); font-family: var(--font-mono);"></span></div>
+    <div id="comparePanels" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;"></div>
+    <div class="continue-row" style="margin-top: 24px;">
+      <button class="btn-ghost" onclick="resetUpload()">Start over with a new file</button>
+    </div>
+  </div>
+
+  <div id="insightsStage" class="glass-panel hidden">
+    <div class="filebar">
+      <div>
+        <div class="filebar-name">Data Insights</div>
+        <div class="filebar-meta" id="insightsMeta"></div>
+      </div>
+      <button class="btn-ghost" onclick="closeInsights()">Back</button>
+    </div>
+
+    <div class="rail-label"><span>Column by column</span></div>
+    <div id="insightsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 28px;"></div>
+
+    <div id="corrSection" class="hidden">
+      <div class="rail-label"><span>Correlation between numeric columns</span></div>
+      <div style="display: flex; gap: 18px; margin-bottom: 12px; font-size: 11px; color: var(--slate);">
+        <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 3px; background: var(--signal); display: inline-block;"></span>Positive relationship</div>
+        <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 3px; background: var(--amber); display: inline-block;"></span>Negative relationship</div>
+      </div>
+      <div style="overflow-x: auto; margin-bottom: 28px;">
+        <table id="corrTable" style="border-collapse: collapse;"></table>
+      </div>
+    </div>
+
+    <div class="rail-label"><span>What stands out</span></div>
+    <div class="summary-box" id="insightsSummary"></div>
+
+    <div class="continue-row" style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
+      <button class="btn-ghost" onclick="exportInsightsPDF()">Export insights PDF</button>
+    </div>
+  </div>
+
+  <footer>LucidGlass · Phase 1, full loop running in your browser</footer>
+
+</div>
+
+<script>
+function toggleTheme() {
+  const root = document.documentElement;
+  const isDark = root.getAttribute('data-theme') === 'dark';
+  root.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('toggle-label').textContent = isDark ? 'Light mode' : 'Dark mode';
+  requestAnimationFrame(updateMagnify);
+}
+
+const SAMPLES = {
+  titanic: `PassengerId,Survived,Pclass,Sex,Age,Fare\n1,0,3,male,22,7.25\n2,1,1,female,38,71.28\n3,1,3,female,26,7.92\n4,1,1,female,35,53.10\n5,0,3,male,35,8.05\n6,0,3,male,,8.46\n7,0,1,male,54,51.86\n8,0,3,male,2,21.08\n9,1,3,female,27,11.13\n10,1,2,female,14,30.07\n11,1,3,female,4,16.70\n12,1,1,female,58,26.55\n13,0,3,male,20,8.05\n14,0,3,male,39,31.28\n15,0,3,female,14,7.85\n16,1,2,female,55,16.00\n17,0,3,male,2,29.13\n18,1,2,male,,13.00\n19,0,3,female,31,18.00\n20,1,3,female,,7.23\n21,0,2,male,35,26.00\n22,1,2,male,34,13.00\n23,1,3,female,15,8.03\n24,1,1,male,28,35.50\n25,0,3,female,8,21.08\n26,1,3,female,38,31.39\n27,0,3,male,,7.23\n28,0,1,male,19,263.00\n29,1,3,female,,7.88\n30,0,3,male,,7.90\n31,0,1,male,40,27.72\n32,1,1,female,45,146.52\n33,1,3,female,,7.75\n34,0,2,male,66,10.50\n35,0,1,male,28,82.17\n36,0,1,male,42,52.00\n37,1,3,male,,7.23\n38,0,3,male,21,8.05\n39,0,3,female,18,18.00\n40,1,3,female,14,11.24`,
+  iris: `sepal_length,sepal_width,petal_length,petal_width,species\n5.1,3.5,1.4,0.2,setosa\n4.9,3.0,1.4,0.2,setosa\n4.7,3.2,1.3,0.2,setosa\n4.6,3.1,1.5,0.2,setosa\n5.0,3.6,1.4,0.2,setosa\n5.4,3.9,1.7,0.4,setosa\n4.6,3.4,1.4,0.3,setosa\n5.0,3.4,1.5,0.2,setosa\n4.4,2.9,1.4,0.2,setosa\n4.9,3.1,1.5,0.1,setosa\n5.4,3.7,1.5,0.2,setosa\n4.8,3.4,1.6,0.2,setosa\n4.8,3.0,1.4,0.1,setosa\n4.3,3.0,1.1,0.1,setosa\n5.8,4.0,1.2,0.2,setosa\n7.0,3.2,4.7,1.4,versicolor\n6.4,3.2,4.5,1.5,versicolor\n6.9,3.1,4.9,1.5,versicolor\n5.5,2.3,4.0,1.3,versicolor\n6.5,2.8,4.6,1.5,versicolor\n5.7,2.8,4.5,1.3,versicolor\n6.3,3.3,4.7,1.6,versicolor\n4.9,2.4,3.3,1.0,versicolor\n6.6,2.9,4.6,1.3,versicolor\n5.2,2.7,3.9,1.4,versicolor\n5.0,2.0,3.5,1.0,versicolor\n5.9,3.0,4.2,1.5,versicolor\n6.0,2.2,4.0,1.0,versicolor\n6.1,2.9,4.7,1.4,versicolor\n5.6,2.9,3.6,1.3,versicolor\n6.3,3.3,6.0,2.5,virginica\n5.8,2.7,5.1,1.9,virginica\n7.1,3.0,5.9,2.1,virginica\n6.3,2.9,5.6,1.8,virginica\n6.5,3.0,5.8,2.2,virginica\n7.6,3.0,6.6,2.1,virginica\n4.9,2.5,4.5,1.7,virginica\n7.3,2.9,6.3,1.8,virginica\n6.7,2.5,5.8,1.8,virginica\n7.2,3.6,6.1,2.5,virginica\n6.5,3.2,5.1,2.0,virginica\n6.4,2.7,5.3,1.9,virginica\n6.8,3.0,5.5,2.1,virginica\n5.7,2.5,5.0,2.0,virginica\n5.8,2.8,5.1,2.4,virginica`,
+  wine: `fixed_acidity,volatile_acidity,alcohol,quality\n7.4,0.70,9.4,5\n7.8,0.88,9.8,5\n7.8,0.76,9.8,5\n11.2,0.28,9.8,6\n7.4,0.70,9.4,5\n7.9,0.60,9.4,5\n7.3,0.65,10.0,7\n7.8,0.58,9.5,7\n7.5,0.32,10.5,6\n8.1,0.22,10.2,6\n8.9,0.18,10.8,6\n7.7,0.24,11.0,7\n6.3,0.30,9.9,5\n6.9,0.31,10.1,6\n8.6,0.52,11.5,7\n5.8,0.61,9.8,5\n6.5,0.51,9.6,5\n7.2,0.66,10.0,6\n7.0,0.42,10.4,6\n6.6,0.44,9.9,5\n9.0,0.40,11.2,7\n6.1,0.59,9.5,5\n7.5,0.50,10.0,6\n6.8,0.68,9.9,5\n8.2,0.34,11.0,6\n6.4,0.57,9.7,5\n7.9,0.35,10.8,6\n6.0,0.62,9.6,4\n8.5,0.28,11.4,7\n7.1,0.55,9.9,6\n6.7,0.60,9.5,5\n9.2,0.30,12.0,8\n6.2,0.58,9.8,5\n7.6,0.45,10.6,6\n6.9,0.52,9.7,5\n8.0,0.38,10.9,6`
+};
+
+let currentData = null;
+let currentFields = null;
+let selectedTarget = null;
+let selectedAlgo = null;
+let numericFeatureCols = [];
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const rail = document.getElementById('colRail');
+
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('drag');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+function loadSample(name, evt) {
+  evt.stopPropagation();
+  const parsed = Papa.parse(SAMPLES[name], { header: true, skipEmptyLines: true });
+  processData(parsed.data, parsed.meta.fields, name + '.csv (sample)');
+}
+
+function handleFile(file) {
+  Papa.parse(file, {
+    header: true, skipEmptyLines: true,
+    complete: (results) => processData(results.data, results.meta.fields, file.name)
+  });
+}
+
+function detectType(values) {
+  const nonNull = values.filter(v => v !== null && v !== undefined && v !== '');
+  if (nonNull.length === 0) return 'categorical';
+  const numericCount = nonNull.filter(v => v !== '' && !isNaN(v)).length;
+  if (numericCount / nonNull.length > 0.9) return 'numeric';
+  const boolSet = new Set(['true','false','yes','no','0','1']);
+  const boolCount = nonNull.filter(v => boolSet.has(String(v).toLowerCase())).length;
+  if (boolCount / nonNull.length > 0.9 && new Set(nonNull.map(v => String(v).toLowerCase())).size <= 2) return 'boolean';
+  const dateCount = nonNull.filter(v => !isNaN(Date.parse(v)) && String(v).match(/[-\/]/)).length;
+  if (dateCount / nonNull.length > 0.9) return 'date';
+  return 'categorical';
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('step' + i);
+    el.classList.remove('active', 'done');
+    if (i < n) el.classList.add('done');
+    if (i === n) el.classList.add('active');
+  }
+}
+
+function processData(rows, fields, label) {
+  currentData = rows;
+  currentFields = fields;
+  selectedTarget = null;
+  selectedAlgo = null;
+
+  document.getElementById('uploadStage').classList.add('hidden');
+  document.getElementById('algoStage').classList.add('hidden');
+  document.getElementById('resultsStage').classList.add('hidden');
+  document.getElementById('resultsCompareStage').classList.add('hidden');
+  document.getElementById('resultStage').classList.remove('hidden');
+  document.getElementById('fileName').textContent = label;
+  setStep(2);
+
+  const dupeSet = new Set();
+  let dupeCount = 0;
+  rows.forEach(r => {
+    const key = JSON.stringify(r);
+    if (dupeSet.has(key)) dupeCount++;
+    dupeSet.add(key);
+  });
+
+  document.getElementById('fileMeta').textContent = fields.length + ' columns detected';
+  document.getElementById('statRows').textContent = rows.length;
+  document.getElementById('statCols').textContent = fields.length;
+  const dupeEl = document.getElementById('statDupes');
+  dupeEl.textContent = dupeCount;
+  dupeEl.className = 'badge-value ' + (dupeCount > 0 ? 'warn' : 'ok');
+
+  const colInfo = fields.map(f => {
+    const values = rows.map(r => r[f]);
+    const nullCount = values.filter(v => v === null || v === undefined || v === '').length;
+    const nullPct = Math.round((nullCount / values.length) * 100);
+    const nonNullVals = values.filter(v => v !== null && v !== undefined && v !== '');
+    const uniqueCount = new Set(nonNullVals.map(v => String(v))).size;
+    return { name: f, type: detectType(values), nullPct, uniqueCount };
+  });
+
+  const health = computeHealthScore(colInfo, rows, dupeCount);
+  const healthEl = document.getElementById('statHealth');
+  healthEl.textContent = health.score + '%';
+  healthEl.className = 'badge-value ' + (health.score >= 80 ? 'ok' : health.score >= 55 ? 'warn' : 'warn');
+  const detailEl = document.getElementById('healthDetail');
+  if (health.notes.length) {
+    detailEl.textContent = health.notes.join(' · ');
+    detailEl.classList.remove('hidden');
+  } else {
+    detailEl.classList.add('hidden');
+  }
+
+  buildRail(colInfo, rows);
+
+  const grid = document.getElementById('targetGrid');
+  grid.innerHTML = '';
+  fields.forEach(f => {
+    const opt = document.createElement('div');
+    opt.className = 'target-option';
+    opt.textContent = f;
+    opt.onclick = () => selectTarget(f, opt, colInfo);
+    grid.appendChild(opt);
+  });
+
+  window._colInfo = colInfo;
+}
+
+function computeHealthScore(colInfo, rows, dupeCount) {
+  const n = rows.length;
+  const notes = [];
+
+  const missingCols = colInfo.filter(c => c.nullPct > 0);
+  const avgMissing = colInfo.reduce((sum, c) => sum + c.nullPct, 0) / colInfo.length;
+  if (missingCols.length) {
+    notes.push(missingCols.length + ' column' + (missingCols.length > 1 ? 's have' : ' has') + ' missing values');
+  }
+
+  const dupPct = n ? (dupeCount / n) * 100 : 0;
+  if (dupeCount > 0) {
+    notes.push(dupeCount + ' duplicate row' + (dupeCount > 1 ? 's' : ''));
+  }
+
+  let imbalancedCount = 0;
+  colInfo.forEach(c => {
+    if (c.type === 'categorical' || c.type === 'boolean') {
+      const vals = rows.map(r => r[c.name]).filter(v => v !== '' && v != null);
+      if (!vals.length) return;
+      const counts = {};
+      vals.forEach(v => counts[v] = (counts[v] || 0) + 1);
+      const maxShare = Math.max(...Object.values(counts)) / vals.length;
+      if (maxShare > 0.9) imbalancedCount++;
+    }
+  });
+  if (imbalancedCount > 0) {
+    notes.push(imbalancedCount + ' column' + (imbalancedCount > 1 ? 's are' : ' is') + ' heavily skewed toward one value');
+  }
+
+  let score = 100 - avgMissing * 0.6 - dupPct * 0.8 - imbalancedCount * 8;
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  return { score, notes };
+}
+
+function buildRail(colInfo, rows) {
+  rail.innerHTML = '';
+  colInfo.forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'col-card';
+    const sampleValues = rows.slice(0, 6).map(r => {
+      const v = r[c.name];
+      return (v === '' || v == null) ? '—' : v;
+    });
+    card.innerHTML = `
+      <div class="col-name">${c.name}</div>
+      <span class="col-type-tag type-${c.type}">${c.type}</span>
+      ${c.nullPct > 0 ? `<div class="col-null">${c.nullPct}% missing</div>` : ''}
+      <div class="col-values">${sampleValues.map(v => `<div class="col-value">${v}</div>`).join('')}</div>
+    `;
+    rail.appendChild(card);
+  });
+  requestAnimationFrame(() => {
+    const firstCard = rail.querySelector('.col-card');
+    if (firstCard) {
+      const offset = firstCard.offsetLeft - (rail.clientWidth / 2) + (firstCard.offsetWidth / 2);
+      rail.scrollLeft = offset;
+    }
+    updateMagnify();
+  });
+}
+
+function updateMagnify() {
+  const railRect = rail.getBoundingClientRect();
+  const centerX = railRect.left + railRect.width / 2;
+  const cards = rail.querySelectorAll('.col-card');
+  cards.forEach(card => {
+    const r = card.getBoundingClientRect();
+    const cardCenter = r.left + r.width / 2;
+    const dist = Math.abs(cardCenter - centerX);
+    const maxDist = railRect.width / 2 + r.width / 2;
+    const t = Math.min(dist / maxDist, 1);
+    const scale = 1.07 - t * 0.09;
+    const opacity = 1 - t * 0.10;
+    card.style.transform = `scale(${scale})`;
+    card.style.opacity = opacity;
+    card.style.zIndex = Math.round((1 - t) * 100);
+    const inFocus = t < 0.18;
+    card.style.borderColor = inFocus ? 'var(--signal)' : 'var(--border)';
+    card.style.boxShadow = inFocus ? '0 10px 26px rgba(75,95,238,0.20)' : 'none';
+    const tag = card.querySelector('.col-type-tag');
+    if (tag) tag.style.filter = inFocus ? 'saturate(1.35) brightness(1.05)' : 'none';
+  });
+}
+
+let scrollTimer = null;
+rail.addEventListener('scroll', () => {
+  if (scrollTimer) cancelAnimationFrame(scrollTimer);
+  scrollTimer = requestAnimationFrame(updateMagnify);
+});
+window.addEventListener('resize', () => requestAnimationFrame(updateMagnify));
+
+function scrollRail(dir) {
+  const card = rail.querySelector('.col-card');
+  const step = card ? card.offsetWidth + 14 : 160;
+  rail.scrollBy({ left: dir * step, behavior: 'smooth' });
+}
+
+let selectedMode = 'classification';
+let targetClassCount = 0;
+
+function selectTarget(field, el, colInfo) {
+  selectedTarget = field;
+  document.querySelectorAll('.target-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('continueToAlgo').classList.add('active');
+
+  const info = colInfo.find(c => c.name === field);
+  const note = document.getElementById('targetNote');
+  const highCardinality = info.type === 'numeric' && info.uniqueCount > 10 && (info.uniqueCount / currentData.length) > 0.05;
+  selectedMode = highCardinality ? 'regression' : 'classification';
+
+  if (highCardinality) {
+    note.textContent = field + ' has ' + info.uniqueCount + ' distinct values, which looks like a continuous number rather than a fixed set of categories. Linear Regression will be used here, predicting the actual value instead of guessing an exact class.';
+    note.style.background = 'var(--aqua-bg)';
+    note.style.border = '1px solid var(--aqua)';
+    note.style.color = 'var(--aqua)';
+    note.classList.remove('hidden');
+  } else {
+    note.classList.add('hidden');
+  }
+}
+
+function resetUpload() {
+  document.getElementById('resultStage').classList.add('hidden');
+  document.getElementById('algoStage').classList.add('hidden');
+  document.getElementById('resultsStage').classList.add('hidden');
+  document.getElementById('resultsCompareStage').classList.add('hidden');
+  document.getElementById('uploadStage').classList.remove('hidden');
+  document.getElementById('continueToAlgo').classList.remove('active');
+  document.getElementById('trainBtn').classList.remove('active');
+  fileInput.value = '';
+  setStep(1);
+}
+
+document.getElementById('continueToAlgo').addEventListener('click', () => {
+  if (!selectedTarget) return;
+  numericFeatureCols = window._colInfo
+    .filter(c => c.name !== selectedTarget && c.type === 'numeric')
+    .map(c => c.name);
+
+  if (selectedMode === 'classification') {
+    const vals = currentData.map(r => String(r[selectedTarget])).filter(v => v !== '' && v != null);
+    targetClassCount = new Set(vals).size;
+  } else {
+    targetClassCount = 0;
+  }
+
+  document.getElementById('resultStage').classList.add('hidden');
+  document.getElementById('algoStage').classList.remove('hidden');
+  document.getElementById('algoTargetName').textContent = selectedTarget;
+  document.getElementById('featureNote').textContent = numericFeatureCols.length
+    ? 'Training on ' + numericFeatureCols.length + ' numeric columns: ' + numericFeatureCols.join(', ') + '. Categorical columns are skipped in this phase.'
+    : 'No usable numeric feature columns were found for this target.';
+  renderAlgoOptions();
+  setStep(3);
+});
+
+function renderAlgoOptions() {
+  const grid = document.getElementById('algoGrid');
+  grid.innerHTML = '';
+  selectedAlgo = null;
+  compareMode = false;
+  selectedAlgos = [];
+  document.getElementById('trainBtn').classList.remove('active');
+  document.getElementById('trainBtn').textContent = 'Train model';
+  document.getElementById('compareDot').style.background = 'var(--border-strong)';
+  document.getElementById('compareLabel').textContent = 'Compare two algorithms';
+  document.getElementById('compareToggleWrap').classList.toggle('hidden', selectedMode !== 'classification');
+
+  const options = [];
+  if (selectedMode === 'regression') {
+    options.push({ id: 'linear', name: 'Linear Regression', desc: 'Fits a straight line through your data that best predicts the actual number, not a category. Well suited for a continuous value like this one.' });
+  } else {
+    options.push({ id: 'knn', name: 'K Nearest Neighbors', desc: 'Looks at the five most similar rows already seen and predicts based on what most of them turned out to be. Simple, fast, and easy to reason about.' });
+    options.push({ id: 'tree', name: 'Decision Tree', desc: 'Splits your data into smaller and smaller groups using yes or no questions about each column, until each group is mostly one answer.' });
+    options.push({ id: 'randomforest', name: 'Random Forest', desc: 'Trains many decision trees on random slices of your data and lets them vote together. Usually the most accurate option here, at the cost of being harder to explain in one sentence.' });
+    if (targetClassCount === 2) {
+      options.push({ id: 'logistic', name: 'Logistic Regression', desc: 'Draws a clean boundary between two outcomes and returns a probability rather than just a guess. A classic, reliable choice for yes or no questions.' });
+    }
+  }
+
+  options.forEach(opt => {
+    const card = document.createElement('div');
+    card.className = 'algo-card';
+    card.id = 'algo-' + opt.id;
+    card.onclick = () => selectAlgo(opt.id);
+    card.innerHTML = `<div class="algo-name">${opt.name}</div><div class="algo-desc">${opt.desc}</div>`;
+    grid.appendChild(card);
+  });
+}
+
+let compareMode = false;
+let selectedAlgos = [];
+
+function toggleCompareMode() {
+  compareMode = !compareMode;
+  selectedAlgos = [];
+  selectedAlgo = null;
+  document.querySelectorAll('.algo-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('compareDot').style.background = compareMode ? 'var(--signal)' : 'var(--border-strong)';
+  document.getElementById('compareLabel').textContent = compareMode ? 'Comparing two algorithms, pick two' : 'Compare two algorithms';
+  document.getElementById('trainBtn').textContent = compareMode ? 'Compare models' : 'Train model';
+  document.getElementById('trainBtn').classList.remove('active');
+}
+
+function selectAlgo(name) {
+  if (!compareMode) {
+    selectedAlgo = name;
+    document.querySelectorAll('.algo-card').forEach(c => c.classList.toggle('selected', c.id === 'algo-' + name));
+    document.getElementById('trainBtn').classList.toggle('active', numericFeatureCols.length > 0);
+    return;
+  }
+  const idx = selectedAlgos.indexOf(name);
+  if (idx >= 0) {
+    selectedAlgos.splice(idx, 1);
+  } else {
+    if (selectedAlgos.length >= 2) selectedAlgos.shift();
+    selectedAlgos.push(name);
+  }
+  document.querySelectorAll('.algo-card').forEach(c => {
+    c.classList.toggle('selected', selectedAlgos.includes(c.id.replace('algo-', '')));
+  });
+  document.getElementById('trainBtn').classList.toggle('active', selectedAlgos.length === 2);
+}
+
+// ---- ML implementations ----
+
+function buildDataset(mode) {
+  const rows = currentData.filter(r =>
+    numericFeatureCols.every(c => r[c] !== '' && r[c] != null && !isNaN(r[c])) &&
+    r[selectedTarget] !== '' && r[selectedTarget] != null
+  );
+  const X = rows.map(r => numericFeatureCols.map(c => parseFloat(r[c])));
+  if (mode === 'regression') {
+    const y = rows.map(r => parseFloat(r[selectedTarget]));
+    return { X, y, classes: null };
+  }
+  const yRaw = rows.map(r => String(r[selectedTarget]));
+  const classes = [...new Set(yRaw)];
+  const y = yRaw.map(v => classes.indexOf(v));
+  return { X, y, classes };
+}
+
+function standardize(X) {
+  const n = X.length, d = X[0].length;
+  const means = new Array(d).fill(0), stds = new Array(d).fill(0);
+  for (let j = 0; j < d; j++) {
+    let sum = 0;
+    for (let i = 0; i < n; i++) sum += X[i][j];
+    means[j] = sum / n;
+  }
+  for (let j = 0; j < d; j++) {
+    let sq = 0;
+    for (let i = 0; i < n; i++) sq += Math.pow(X[i][j] - means[j], 2);
+    stds[j] = Math.sqrt(sq / n) || 1;
+  }
+  const Xs = X.map(row => row.map((v, j) => (v - means[j]) / stds[j]));
+  return { Xs, means, stds };
+}
+
+function hashSeed(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+  }
+  return h >>> 0;
+}
+
+function mulberry32(seed) {
+  return function () {
+    let t = (seed += 0x6D2B79F5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffleSplit(X, y, ratio, rng) {
+  const random = rng || Math.random;
+  const idx = X.map((_, i) => i);
+  for (let i = idx.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [idx[i], idx[j]] = [idx[j], idx[i]];
+  }
+  const cut = Math.max(1, Math.floor(X.length * ratio));
+  const trainIdx = idx.slice(0, cut);
+  const testIdx = idx.slice(cut).length ? idx.slice(cut) : idx.slice(0, Math.max(1, Math.floor(X.length * 0.2)));
+  return {
+    Xtrain: trainIdx.map(i => X[i]), ytrain: trainIdx.map(i => y[i]),
+    Xtest: testIdx.map(i => X[i]), ytest: testIdx.map(i => y[i])
+  };
+}
+
+function knnPredict(Xtrain, ytrain, point, k) {
+  const dists = Xtrain.map((row, i) => {
+    let sum = 0;
+    for (let j = 0; j < row.length; j++) sum += Math.pow(row[j] - point[j], 2);
+    return { d: Math.sqrt(sum), label: ytrain[i] };
+  });
+  dists.sort((a, b) => a.d - b.d);
+  const top = dists.slice(0, Math.min(k, dists.length));
+  const counts = {};
+  top.forEach(t => counts[t.label] = (counts[t.label] || 0) + 1);
+  return Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+}
+
+function gini(labels) {
+  const counts = {};
+  labels.forEach(l => counts[l] = (counts[l] || 0) + 1);
+  const n = labels.length;
+  let imp = 1;
+  Object.values(counts).forEach(c => imp -= Math.pow(c / n, 2));
+  return imp;
+}
+
+function buildTree(X, y, depth, maxDepth, importance) {
+  const uniqueY = new Set(y);
+  if (uniqueY.size === 1 || depth >= maxDepth || y.length < 4) {
+    const counts = {};
+    y.forEach(l => counts[l] = (counts[l] || 0) + 1);
+    const label = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+    return { leaf: true, label: parseInt(label) };
+  }
+  let best = null;
+  const parentImp = gini(y);
+  const d = X[0].length;
+  for (let j = 0; j < d; j++) {
+    const values = [...new Set(X.map(r => r[j]))].sort((a, b) => a - b);
+    for (let t = 0; t < values.length - 1; t++) {
+      const threshold = (values[t] + values[t + 1]) / 2;
+      const leftY = [], rightY = [];
+      for (let i = 0; i < X.length; i++) {
+        (X[i][j] <= threshold ? leftY : rightY).push(y[i]);
+      }
+      if (leftY.length === 0 || rightY.length === 0) continue;
+      const weightedImp = (leftY.length / y.length) * gini(leftY) + (rightY.length / y.length) * gini(rightY);
+      const gain = parentImp - weightedImp;
+      if (!best || gain > best.gain) best = { feature: j, threshold, gain };
+    }
+  }
+  if (!best || best.gain <= 0) {
+    const counts = {};
+    y.forEach(l => counts[l] = (counts[l] || 0) + 1);
+    const label = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+    return { leaf: true, label: parseInt(label) };
+  }
+  importance[best.feature] = (importance[best.feature] || 0) + best.gain * y.length;
+  const leftX = [], leftY = [], rightX = [], rightY = [];
+  for (let i = 0; i < X.length; i++) {
+    if (X[i][best.feature] <= best.threshold) { leftX.push(X[i]); leftY.push(y[i]); }
+    else { rightX.push(X[i]); rightY.push(y[i]); }
+  }
+  return {
+    leaf: false, feature: best.feature, threshold: best.threshold,
+    left: buildTree(leftX, leftY, depth + 1, maxDepth, importance),
+    right: buildTree(rightX, rightY, depth + 1, maxDepth, importance)
+  };
+}
+
+function treePredict(node, point) {
+  if (node.leaf) return node.label;
+  return point[node.feature] <= node.threshold ? treePredict(node.left, point) : treePredict(node.right, point);
+}
+
+function bootstrapSample(X, y, rng) {
+  const n = X.length;
+  const bx = [], by = [];
+  for (let i = 0; i < n; i++) {
+    const idx = Math.floor(rng() * n);
+    bx.push(X[idx]);
+    by.push(y[idx]);
+  }
+  return { X: bx, y: by };
+}
+
+function buildTreeRF(X, y, depth, maxDepth, importance, rng, maxFeatures) {
+  const uniqueY = new Set(y);
+  if (uniqueY.size === 1 || depth >= maxDepth || y.length < 4) {
+    const counts = {};
+    y.forEach(l => counts[l] = (counts[l] || 0) + 1);
+    const label = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+    return { leaf: true, label: parseInt(label) };
+  }
+  const d = X[0].length;
+  const allFeatures = Array.from({ length: d }, (_, i) => i);
+  for (let i = allFeatures.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [allFeatures[i], allFeatures[j]] = [allFeatures[j], allFeatures[i]];
+  }
+  const candidateFeatures = allFeatures.slice(0, Math.max(1, maxFeatures));
+
+  let best = null;
+  const parentImp = gini(y);
+  candidateFeatures.forEach(j => {
+    const values = [...new Set(X.map(r => r[j]))].sort((a, b) => a - b);
+    for (let t = 0; t < values.length - 1; t++) {
+      const threshold = (values[t] + values[t + 1]) / 2;
+      const leftY = [], rightY = [];
+      for (let i = 0; i < X.length; i++) {
+        (X[i][j] <= threshold ? leftY : rightY).push(y[i]);
+      }
+      if (leftY.length === 0 || rightY.length === 0) continue;
+      const weightedImp = (leftY.length / y.length) * gini(leftY) + (rightY.length / y.length) * gini(rightY);
+      const gain = parentImp - weightedImp;
+      if (!best || gain > best.gain) best = { feature: j, threshold, gain };
+    }
+  });
+  if (!best || best.gain <= 0) {
+    const counts = {};
+    y.forEach(l => counts[l] = (counts[l] || 0) + 1);
+    const label = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+    return { leaf: true, label: parseInt(label) };
+  }
+  importance[best.feature] = (importance[best.feature] || 0) + best.gain * y.length;
+  const leftX = [], leftY = [], rightX = [], rightY = [];
+  for (let i = 0; i < X.length; i++) {
+    if (X[i][best.feature] <= best.threshold) { leftX.push(X[i]); leftY.push(y[i]); }
+    else { rightX.push(X[i]); rightY.push(y[i]); }
+  }
+  return {
+    leaf: false, feature: best.feature, threshold: best.threshold,
+    left: buildTreeRF(leftX, leftY, depth + 1, maxDepth, importance, rng, maxFeatures),
+    right: buildTreeRF(rightX, rightY, depth + 1, maxDepth, importance, rng, maxFeatures)
+  };
+}
+
+function forestPredict(trees, point) {
+  const counts = {};
+  trees.forEach(tree => {
+    const pred = treePredict(tree, point);
+    counts[pred] = (counts[pred] || 0) + 1;
+  });
+  return parseInt(Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b));
+}
+
+function mean(arr) { return arr.reduce((a, b) => a + b, 0) / arr.length; }
+function median(arr) {
+  const s = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+function stdDev(arr) {
+  const m = mean(arr);
+  return Math.sqrt(arr.reduce((a, b) => a + Math.pow(b - m, 2), 0) / arr.length);
+}
+function histogram(values, bins) {
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = (max - min) || 1;
+  const counts = new Array(bins).fill(0);
+  values.forEach(v => {
+    let idx = Math.floor(((v - min) / range) * bins);
+    if (idx >= bins) idx = bins - 1;
+    if (idx < 0) idx = 0;
+    counts[idx]++;
+  });
+  return { counts, min, max };
+}
+function corrCellColor(v) {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const posRGB = isDark ? [124, 138, 255] : [75, 95, 238];
+  const negRGB = isDark ? [224, 169, 62] : [184, 122, 10];
+  const alpha = Math.min(1, Math.abs(v));
+  const rgb = v >= 0 ? posRGB : negRGB;
+  return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${(alpha * 0.55).toFixed(2)})`;
+}
+
+function pearson(rows, colA, colB) {
+  const pairs = rows.map(r => [parseFloat(r[colA]), parseFloat(r[colB])]).filter(([a, b]) => !isNaN(a) && !isNaN(b));
+  if (pairs.length < 2) return 0;
+  const n = pairs.length;
+  const mA = pairs.reduce((s, p) => s + p[0], 0) / n;
+  const mB = pairs.reduce((s, p) => s + p[1], 0) / n;
+  let num = 0, dA = 0, dB = 0;
+  pairs.forEach(([a, b]) => { num += (a - mA) * (b - mB); dA += Math.pow(a - mA, 2); dB += Math.pow(b - mB, 2); });
+  return (dA && dB) ? num / Math.sqrt(dA * dB) : 0;
+}
+
+function generateInsights() {
+  const colInfo = window._colInfo;
+  const rows = currentData;
+  const numericCols = colInfo.filter(c => c.type === 'numeric').map(c => c.name);
+  const catCols = colInfo.filter(c => c.type === 'categorical' || c.type === 'boolean').map(c => c.name);
+
+  const grid = document.getElementById('insightsGrid');
+  grid.innerHTML = '';
+  const numericStats = {};
+
+  numericCols.forEach(name => {
+    const values = rows.map(r => parseFloat(r[name])).filter(v => !isNaN(v));
+    if (!values.length) return;
+    const m = mean(values), md = median(values), sd = stdDev(values);
+    const mn = Math.min(...values), mx = Math.max(...values);
+    const hist = histogram(values, 8);
+    numericStats[name] = { mean: m, median: md, std: sd, min: mn, max: mx, hist };
+    const maxCount = Math.max(...hist.counts, 1);
+
+    const card = document.createElement('div');
+    card.className = 'insight-card';
+    card.innerHTML = `
+      <div class="insight-name">${name}</div>
+      <div class="insight-stats">
+        <div class="insight-stat">Mean<b>${m.toFixed(1)}</b></div>
+        <div class="insight-stat">Median<b>${md.toFixed(1)}</b></div>
+        <div class="insight-stat">Std dev<b>${sd.toFixed(1)}</b></div>
+        <div class="insight-stat">Range<b>${mn.toFixed(1)} to ${mx.toFixed(1)}</b></div>
+      </div>
+      <div class="hist-row">${hist.counts.map(c => `<div class="hist-bar" style="height:${Math.max(4, (c / maxCount) * 42)}px"></div>`).join('')}</div>
+    `;
+    grid.appendChild(card);
+  });
+
+  const catStats = [];
+  catCols.forEach(name => {
+    const vals = rows.map(r => r[name]).filter(v => v !== '' && v != null);
+    if (!vals.length) return;
+    const counts = {};
+    vals.forEach(v => counts[v] = (counts[v] || 0) + 1);
+    const total = vals.length;
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5)
+      .map(([label, count]) => ({ label, pct: Math.round((count / total) * 100) }));
+    catStats.push({ name, top: sorted });
+
+    const card = document.createElement('div');
+    card.className = 'insight-card';
+    card.innerHTML = `
+      <div class="insight-name">${name}</div>
+      <div class="cat-row">
+        ${sorted.map(t => `
+          <div>
+            <div class="cat-label"><span>${t.label}</span><span>${t.pct}%</span></div>
+            <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${t.pct}%"></div></div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  let matrix = [];
+  if (numericCols.length >= 2) {
+    matrix = numericCols.map(a => numericCols.map(b => a === b ? 1 : pearson(rows, a, b)));
+    let html = '<tr><td class="corr-header"></td>' + numericCols.map(c => `<td class="corr-header">${c.slice(0, 6)}</td>`).join('') + '</tr>';
+    numericCols.forEach((rowName, i) => {
+      html += `<tr><td class="corr-header">${rowName.slice(0, 12)}</td>` + numericCols.map((_, j) => {
+        const v = matrix[i][j];
+        const alpha = Math.min(1, Math.abs(v));
+        const bg = i === j ? 'rgba(75,95,238,0.12)' : corrCellColor(v);
+        return `<td class="corr-cell" style="background:${bg}">${v.toFixed(2)}</td>`;
+      }).join('') + '</tr>';
+    });
+    document.getElementById('corrTable').innerHTML = html;
+    document.getElementById('corrSection').classList.remove('hidden');
+  } else {
+    document.getElementById('corrSection').classList.add('hidden');
+  }
+
+  const bullets = [];
+  if (numericCols.length >= 2) {
+    let strongest = null;
+    for (let i = 0; i < numericCols.length; i++) {
+      for (let j = i + 1; j < numericCols.length; j++) {
+        const v = matrix[i][j];
+        if (!strongest || Math.abs(v) > Math.abs(strongest.v)) strongest = { a: numericCols[i], b: numericCols[j], v };
+      }
+    }
+    if (strongest && Math.abs(strongest.v) > 0.4) {
+      bullets.push(strongest.a + ' and ' + strongest.b + ' show the strongest relationship in this dataset, correlated at ' + strongest.v.toFixed(2) + '.');
+    } else if (strongest) {
+      bullets.push('No pair of numeric columns is strongly correlated here. The strongest is ' + strongest.a + ' and ' + strongest.b + ' at ' + strongest.v.toFixed(2) + '.');
+    }
+  }
+  if (Object.keys(numericStats).length) {
+    let widest = null;
+    Object.entries(numericStats).forEach(([name, s]) => {
+      const spread = s.mean !== 0 ? s.std / Math.abs(s.mean) : s.std;
+      if (!widest || spread > widest.spread) widest = { name, spread };
+    });
+    if (widest) bullets.push(widest.name + ' has the widest spread relative to its average value. Worth a closer look if it ends up as a feature or a target.');
+  }
+  const missingCols = colInfo.filter(c => c.nullPct > 0).sort((a, b) => b.nullPct - a.nullPct);
+  if (missingCols.length) {
+    bullets.push(missingCols.length + ' column' + (missingCols.length > 1 ? 's carry' : ' carries') + ' missing values, ' + missingCols[0].name + ' the most at ' + missingCols[0].nullPct + '%.');
+  } else {
+    bullets.push('No missing values were found across any column.');
+  }
+
+  document.getElementById('insightsSummary').innerHTML = bullets.map(b => '<div style="margin-bottom: 8px;">' + b + '</div>').join('');
+
+  window._insightsSnapshot = {
+    fileLabel: document.getElementById('fileName').textContent,
+    rows: currentData.length,
+    cols: currentFields.length,
+    numericStats,
+    catStats,
+    numericCols,
+    matrix,
+    bullets
+  };
+}
+
+function openInsights() {
+  generateInsights();
+  document.getElementById('resultStage').classList.add('hidden');
+  document.getElementById('insightsStage').classList.remove('hidden');
+  document.getElementById('insightsMeta').textContent = currentData.length + ' rows across ' + currentFields.length + ' columns';
+}
+
+function closeInsights() {
+  document.getElementById('insightsStage').classList.add('hidden');
+  document.getElementById('resultStage').classList.remove('hidden');
+}
+
+const BRAND = {
+  ink: [18, 20, 26],
+  slate: [90, 98, 112],
+  slateMuted: [140, 145, 155],
+  signal: [75, 95, 238],
+  signalDark: [42, 58, 168],
+  aqua: [15, 158, 144],
+  amber: [184, 122, 10],
+  border: [225, 227, 232],
+  tint: [244, 245, 248]
+};
+
+function drawLucidGlassHeader(doc, subtitle, metaLine) {
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(21);
+  doc.setTextColor(...BRAND.ink);
+  doc.text('Lucid', 48, 54);
+  const w = doc.getTextWidth('Lucid');
+  doc.setTextColor(...BRAND.signal);
+  doc.text('Glass', 48 + w, 54);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(...BRAND.slate);
+  doc.text(subtitle, 48, 74);
+  if (metaLine) {
+    doc.setFontSize(9.5);
+    doc.setTextColor(...BRAND.slateMuted);
+    doc.text(metaLine, 48, 88);
+  }
+  doc.setDrawColor(...BRAND.border);
+  doc.line(48, 100, 595 - 48, 100);
+  return 128;
+}
+
+function drawNumericCard(doc, x, y, w, h, name, stats) {
+  doc.setDrawColor(...BRAND.border);
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(x, y, w, h, 6, 6, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(...BRAND.ink);
+  doc.text(name, x + 10, y + 16, { maxWidth: w - 20 });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.8);
+  doc.setTextColor(...BRAND.slate);
+  doc.text('Mean ' + stats.mean.toFixed(1) + '   Median ' + stats.median.toFixed(1), x + 10, y + 30);
+  doc.text('Std dev ' + stats.std.toFixed(1), x + 10, y + 41);
+  doc.text('Range ' + stats.min.toFixed(1) + ' to ' + stats.max.toFixed(1), x + 10, y + 52);
+
+  const barsY = y + h - 26;
+  const barsAreaW = w - 20;
+  const bins = stats.hist.counts.length;
+  const barGap = 3;
+  const barW = (barsAreaW - barGap * (bins - 1)) / bins;
+  const maxCount = Math.max(...stats.hist.counts, 1);
+  const maxBarH = 22;
+  stats.hist.counts.forEach((c, i) => {
+    const bh = Math.max(2, (c / maxCount) * maxBarH);
+    doc.setFillColor(...BRAND.signal);
+    doc.rect(x + 10 + i * (barW + barGap), barsY + (maxBarH - bh), barW, bh, 'F');
+  });
+}
+
+function drawCategoricalCard(doc, x, y, w, h, name, top) {
+  doc.setDrawColor(...BRAND.border);
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(x, y, w, h, 6, 6, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(...BRAND.ink);
+  doc.text(name, x + 10, y + 16, { maxWidth: w - 20 });
+
+  let rowY = y + 28;
+  const trackW = w - 60;
+  top.forEach(t => {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...BRAND.slate);
+    doc.text(String(t.label).slice(0, 14), x + 10, rowY);
+    doc.text(t.pct + '%', x + w - 26, rowY);
+    doc.setFillColor(...BRAND.tint);
+    doc.rect(x + 10, rowY + 3, trackW, 4, 'F');
+    doc.setFillColor(...BRAND.signal);
+    doc.rect(x + 10, rowY + 3, Math.max(2, trackW * (t.pct / 100)), 4, 'F');
+    rowY += 14;
+  });
+}
+
+function exportInsightsPDF() {
+  const d = window._insightsSnapshot;
+  if (!d || !window.jspdf) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const marginX = 48;
+  const pageWidth = 595;
+  const pageBottom = 780;
+
+  let y = drawLucidGlassHeader(doc, 'Data insights export', d.fileLabel + ', ' + d.rows + ' rows, ' + d.cols + ' columns');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(...BRAND.ink);
+  doc.text('Numeric columns', marginX, y);
+  y += 16;
+
+  const cardsPerRow = 3;
+  const gap = 14;
+  const cardW = (pageWidth - marginX * 2 - gap * (cardsPerRow - 1)) / cardsPerRow;
+  const cardH = 96;
+  let col = 0;
+
+  Object.entries(d.numericStats).forEach(([name, stats]) => {
+    if (y + cardH > pageBottom) { doc.addPage(); y = 60; col = 0; }
+    const x = marginX + col * (cardW + gap);
+    drawNumericCard(doc, x, y, cardW, cardH, name, stats);
+    col++;
+    if (col >= cardsPerRow) { col = 0; y += cardH + gap; }
+  });
+  if (col !== 0) y += cardH + gap;
+
+  if (d.catStats.length) {
+    y += 10;
+    if (y + 20 > pageBottom) { doc.addPage(); y = 60; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(...BRAND.ink);
+    doc.text('Categorical columns', marginX, y);
+    y += 16;
+    col = 0;
+    const catCardH = 26 + d.catStats.reduce((m, c) => Math.max(m, c.top.length), 0) * 14 + 10;
+    d.catStats.forEach(c => {
+      if (y + catCardH > pageBottom) { doc.addPage(); y = 60; col = 0; }
+      const x = marginX + col * (cardW + gap);
+      drawCategoricalCard(doc, x, y, cardW, catCardH, c.name, c.top);
+      col++;
+      if (col >= cardsPerRow) { col = 0; y += catCardH + gap; }
+    });
+    if (col !== 0) y += catCardH + gap;
+  }
+
+  if (d.numericCols.length >= 2) {
+    y += 12;
+    if (y + 40 > pageBottom) { doc.addPage(); y = 60; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(...BRAND.ink);
+    doc.text('Correlation grid', marginX, y);
+    y += 14;
+    const cell = Math.min(40, (pageWidth - marginX * 2 - 90) / d.numericCols.length);
+    const startX = marginX + 90;
+    doc.setFontSize(6.5);
+    d.numericCols.forEach((name, j) => {
+      doc.setTextColor(...BRAND.slate);
+      doc.text(name.slice(0, 7), startX + j * cell + 2, y);
+    });
+    y += 8;
+    d.numericCols.forEach((rowName, i) => {
+      if (y + 18 > pageBottom) { doc.addPage(); y = 60; }
+      doc.setFontSize(6.8);
+      doc.setTextColor(...BRAND.slate);
+      doc.text(rowName.slice(0, 13), marginX, y + 11);
+      d.numericCols.forEach((_, j) => {
+        const v = d.matrix[i][j];
+        const alpha = Math.min(1, Math.abs(v));
+        const base = v >= 0 ? BRAND.signal : BRAND.amber;
+        const rgb = [255 - alpha * (255 - base[0]), 255 - alpha * (255 - base[1]), 255 - alpha * (255 - base[2])];
+        doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+        doc.rect(startX + j * cell, y, cell - 1.5, 15, 'F');
+        doc.setFontSize(6.5);
+        doc.setTextColor(alpha > 0.55 ? 255 : BRAND.slate[0], alpha > 0.55 ? 255 : BRAND.slate[1], alpha > 0.55 ? 255 : BRAND.slate[2]);
+        doc.text(v.toFixed(2), startX + j * cell + 3, y + 10.5);
+      });
+      y += 17;
+    });
+  }
+
+  y += 20;
+  if (y + 30 > pageBottom) { doc.addPage(); y = 60; }
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(...BRAND.ink);
+  doc.text('What stands out', marginX, y);
+  y += 10;
+
+  const bulletsBoxY = y;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  let measureY = bulletsBoxY + 18;
+  const wrappedBullets = d.bullets.map(b => doc.splitTextToSize('\u2022  ' + b, pageWidth - marginX * 2 - 24));
+  wrappedBullets.forEach(w => { measureY += w.length * 13 + 6; });
+  const boxH = measureY - bulletsBoxY + 6;
+  doc.setDrawColor(...BRAND.border);
+  doc.setFillColor(...BRAND.tint);
+  doc.roundedRect(marginX, bulletsBoxY, pageWidth - marginX * 2, boxH, 6, 6, 'FD');
+
+  let textY = bulletsBoxY + 20;
+  doc.setTextColor(60, 65, 75);
+  wrappedBullets.forEach(w => {
+    doc.text(w, marginX + 12, textY);
+    textY += w.length * 13 + 6;
+  });
+
+  doc.setFontSize(8);
+  doc.setTextColor(...BRAND.slateMuted);
+  doc.text('Generated locally in your browser. No data left your device.', marginX, 800);
+
+  doc.save((d.fileLabel || 'lucidglass') + '-insights.pdf');
+}
+
+function correlationImportance(X, y) {
+  const d = X[0].length;
+  const n = X.length;
+  const yMean = y.reduce((a, b) => a + b, 0) / n;
+  const scores = [];
+  for (let j = 0; j < d; j++) {
+    const col = X.map(r => r[j]);
+    const xMean = col.reduce((a, b) => a + b, 0) / n;
+    let num = 0, denX = 0, denY = 0;
+    for (let i = 0; i < n; i++) {
+      num += (col[i] - xMean) * (y[i] - yMean);
+      denX += Math.pow(col[i] - xMean, 2);
+      denY += Math.pow(y[i] - yMean, 2);
+    }
+    const corr = denX && denY ? Math.abs(num / Math.sqrt(denX * denY)) : 0;
+    scores.push(corr);
+  }
+  return scores;
+}
+
+function solveLinearSystem(A, bVec) {
+  const n = A.length;
+  const M = A.map((row, i) => [...row, bVec[i]]);
+  for (let col = 0; col < n; col++) {
+    let pivot = col;
+    for (let r = col + 1; r < n; r++) if (Math.abs(M[r][col]) > Math.abs(M[pivot][col])) pivot = r;
+    [M[col], M[pivot]] = [M[pivot], M[col]];
+    const pivotVal = M[col][col] || 1e-9;
+    for (let c = col; c <= n; c++) M[col][c] /= pivotVal;
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const factor = M[r][col];
+      for (let c = col; c <= n; c++) M[r][c] -= factor * M[col][c];
+    }
+  }
+  return M.map(row => row[n]);
+}
+
+function linearRegressionFit(X, y, lambda) {
+  const n = X.length, d = X[0].length, p = d + 1;
+  const Xb = X.map(row => [1, ...row]);
+  const XtX = Array.from({ length: p }, () => new Array(p).fill(0));
+  const Xty = new Array(p).fill(0);
+  for (let i = 0; i < n; i++) {
+    for (let a = 0; a < p; a++) {
+      Xty[a] += Xb[i][a] * y[i];
+      for (let b = 0; b < p; b++) XtX[a][b] += Xb[i][a] * Xb[i][b];
+    }
+  }
+  for (let a = 0; a < p; a++) XtX[a][a] += (lambda || 0.01);
+  return solveLinearSystem(XtX, Xty);
+}
+
+function linearPredict(weights, point) {
+  let sum = weights[0];
+  for (let i = 0; i < point.length; i++) sum += weights[i + 1] * point[i];
+  return sum;
+}
+
+function regressionMetrics(yTrue, yPred) {
+  const n = yTrue.length;
+  const meanY = yTrue.reduce((a, b) => a + b, 0) / n;
+  let ssRes = 0, ssTot = 0, mae = 0;
+  for (let i = 0; i < n; i++) {
+    ssRes += Math.pow(yTrue[i] - yPred[i], 2);
+    ssTot += Math.pow(yTrue[i] - meanY, 2);
+    mae += Math.abs(yTrue[i] - yPred[i]);
+  }
+  return { r2: ssTot ? 1 - ssRes / ssTot : 0, rmse: Math.sqrt(ssRes / n), mae: mae / n };
+}
+
+function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
+
+function logisticFit(X, y, lr, epochs) {
+  const n = X.length, d = X[0].length;
+  let weights = new Array(d).fill(0);
+  let bias = 0;
+  for (let e = 0; e < (epochs || 400); e++) {
+    const gradW = new Array(d).fill(0);
+    let gradB = 0;
+    for (let i = 0; i < n; i++) {
+      let z = bias;
+      for (let j = 0; j < d; j++) z += weights[j] * X[i][j];
+      const err = sigmoid(z) - y[i];
+      for (let j = 0; j < d; j++) gradW[j] += err * X[i][j];
+      gradB += err;
+    }
+    for (let j = 0; j < d; j++) weights[j] -= (lr || 0.15) * gradW[j] / n;
+    bias -= (lr || 0.15) * gradB / n;
+  }
+  return { weights, bias };
+}
+
+function logisticPredict(model, point) {
+  let z = model.bias;
+  for (let j = 0; j < point.length; j++) z += model.weights[j] * point[j];
+  return sigmoid(z) >= 0.5 ? 1 : 0;
+}
+
+document.getElementById('trainBtn').addEventListener('click', () => {
+  if (compareMode) { runCompare(); return; }
+  runSingleTraining();
+});
+
+function runSingleTraining() {
+  if (!selectedAlgo || numericFeatureCols.length === 0) return;
+  const { X, y, classes } = buildDataset(selectedMode);
+  const { Xs } = standardize(X);
+  const rng = mulberry32(hashSeed(document.getElementById('fileName').textContent + '|' + selectedTarget + '|' + selectedAlgo + '|' + numericFeatureCols.join(',') + '|' + X.length));
+  const { Xtrain, ytrain, Xtest, ytest } = shuffleSplit(Xs, y, 0.8, rng);
+
+  let algoLabel = '';
+  let importanceRaw = new Array(numericFeatureCols.length).fill(0);
+  let headlineMetric = 0;
+  let summary = '';
+  let confidenceMetric = 0;
+  let caption = '';
+
+  if (selectedAlgo === 'knn') {
+    algoLabel = 'K Nearest Neighbors';
+    const k = Math.min(5, Xtrain.length);
+    let correct = 0;
+    Xtest.forEach((pt, i) => {
+      const pred = parseInt(knnPredict(Xtrain, ytrain, pt, k));
+      if (pred === ytest[i]) correct++;
+    });
+    const accuracy = ytest.length ? correct / ytest.length : 0;
+    importanceRaw = correlationImportance(Xtrain, ytrain);
+    headlineMetric = accuracy;
+    confidenceMetric = accuracy;
+    caption = accuracy >= 0.75 ? 'This pattern is strong.' : accuracy >= 0.55 ? 'This pattern is moderate, worth a closer look.' : 'This pattern is weak, treat with caution.';
+  } else if (selectedAlgo === 'tree') {
+    algoLabel = 'Decision Tree';
+    const importanceObj = {};
+    const tree = buildTree(Xtrain, ytrain, 0, 4, importanceObj);
+    let correct = 0;
+    Xtest.forEach((pt, i) => {
+      const pred = treePredict(tree, pt);
+      if (pred === ytest[i]) correct++;
+    });
+    const accuracy = ytest.length ? correct / ytest.length : 0;
+    numericFeatureCols.forEach((_, j) => importanceRaw[j] = importanceObj[j] || 0);
+    headlineMetric = accuracy;
+    confidenceMetric = accuracy;
+    caption = accuracy >= 0.75 ? 'This pattern is strong.' : accuracy >= 0.55 ? 'This pattern is moderate, worth a closer look.' : 'This pattern is weak, treat with caution.';
+  } else if (selectedAlgo === 'randomforest') {
+    algoLabel = 'Random Forest';
+    const nTrees = 15;
+    const maxFeatures = Math.max(1, Math.round(Math.sqrt(numericFeatureCols.length)));
+    const importanceAgg = {};
+    const trees = [];
+    for (let t = 0; t < nTrees; t++) {
+      const { X: bx, y: by } = bootstrapSample(Xtrain, ytrain, rng);
+      const importanceObj = {};
+      const tree = buildTreeRF(bx, by, 0, 4, importanceObj, rng, maxFeatures);
+      trees.push(tree);
+      Object.keys(importanceObj).forEach(k => { importanceAgg[k] = (importanceAgg[k] || 0) + importanceObj[k]; });
+    }
+    let correct = 0;
+    Xtest.forEach((pt, i) => {
+      const pred = forestPredict(trees, pt);
+      if (pred === ytest[i]) correct++;
+    });
+    const accuracy = ytest.length ? correct / ytest.length : 0;
+    numericFeatureCols.forEach((_, j) => importanceRaw[j] = importanceAgg[j] || 0);
+    headlineMetric = accuracy;
+    confidenceMetric = accuracy;
+    caption = accuracy >= 0.75 ? 'This pattern is strong.' : accuracy >= 0.55 ? 'This pattern is moderate, worth a closer look.' : 'This pattern is weak, treat with caution.';
+  } else if (selectedAlgo === 'logistic') {
+    algoLabel = 'Logistic Regression';
+    const model = logisticFit(Xtrain, ytrain);
+    let correct = 0;
+    Xtest.forEach((pt, i) => {
+      const pred = logisticPredict(model, pt);
+      if (pred === ytest[i]) correct++;
+    });
+    const accuracy = ytest.length ? correct / ytest.length : 0;
+    importanceRaw = model.weights.map(w => Math.abs(w));
+    headlineMetric = accuracy;
+    confidenceMetric = accuracy;
+    caption = accuracy >= 0.75 ? 'This pattern is strong.' : accuracy >= 0.55 ? 'This pattern is moderate, worth a closer look.' : 'This pattern is weak, treat with caution.';
+  } else if (selectedAlgo === 'linear') {
+    algoLabel = 'Linear Regression';
+    const weights = linearRegressionFit(Xtrain, ytrain, 0.01);
+    const yPred = Xtest.map(pt => linearPredict(weights, pt));
+    const { r2, rmse, mae } = regressionMetrics(ytest, yPred);
+    importanceRaw = weights.slice(1).map(w => Math.abs(w));
+    headlineMetric = r2;
+    confidenceMetric = Math.max(0, r2);
+    caption = r2 >= 0.6 ? 'This pattern is strong.' : r2 >= 0.3 ? 'This pattern is moderate, worth a closer look.' : 'This pattern is weak, treat with caution.';
+    window._lastRegressionStats = { r2, rmse, mae };
+  }
+
+  const totalImp = importanceRaw.reduce((a, b) => a + b, 0) || 1;
+  const importancePct = importanceRaw.map(v => v / totalImp);
+  const ranked = numericFeatureCols.map((name, i) => ({ name, pct: importancePct[i] }))
+    .sort((a, b) => b.pct - a.pct);
+  const topFeature = ranked[0];
+
+  document.getElementById('metricAccuracyLabel').textContent = selectedMode === 'regression' ? 'R\u00B2 score' : 'Accuracy';
+  document.getElementById('metricAccuracy').textContent = selectedMode === 'regression'
+    ? headlineMetric.toFixed(2)
+    : Math.round(headlineMetric * 100) + '%';
+  document.getElementById('metricTestRows').textContent = ytest.length;
+  document.getElementById('metricAlgo').textContent = algoLabel;
+
+  const list = document.getElementById('importanceList');
+  list.innerHTML = ranked.map(r => `
+    <div class="importance-row">
+      <div class="importance-name">${r.name}</div>
+      <div class="importance-track"><div class="importance-fill" style="width:${Math.round(r.pct * 100)}%"></div></div>
+      <div class="importance-pct">${Math.round(r.pct * 100)}%</div>
+    </div>
+  `).join('');
+
+  if (selectedMode === 'regression') {
+    const stats = window._lastRegressionStats;
+    summary = `Predicting <strong>${selectedTarget}</strong> using ${algoLabel.toLowerCase()}, the model reached an R\u00B2 of ${stats.r2.toFixed(2)} on ${ytest.length} held out rows, meaning it explains roughly ${Math.round(Math.max(0, stats.r2) * 100)}% of the variation in ${selectedTarget}. On average, predictions were off by about ${stats.mae.toFixed(1)} units. <strong>${topFeature.name}</strong> carried the most weight in the model, accounting for roughly ${Math.round(topFeature.pct * 100)}% of what it relied on. This is a small sample dataset, so treat these numbers as a demonstration of the pipeline rather than a production result.`;
+  } else {
+    summary = `Predicting <strong>${selectedTarget}</strong> using ${algoLabel.toLowerCase()}, the model reached ${Math.round(headlineMetric * 100)}% accuracy on ${ytest.length} held out rows. <strong>${topFeature.name}</strong> was the strongest signal, accounting for roughly ${Math.round(topFeature.pct * 100)}% of what the model relied on to make its predictions. This is a small sample dataset, so treat these numbers as a demonstration of the pipeline rather than a production result.`;
+  }
+  document.getElementById('summaryText').innerHTML = summary;
+
+  const confidencePct = Math.round(confidenceMetric * 100);
+  document.getElementById('confidenceFill').style.width = confidencePct + '%';
+  document.getElementById('confidenceCaption').textContent = caption;
+
+  window._resultsSnapshot = {
+    fileLabel: document.getElementById('fileName').textContent,
+    rows: currentData.length,
+    cols: currentFields.length,
+    target: selectedTarget,
+    mode: selectedMode,
+    algoLabel: algoLabel,
+    headlineMetric: headlineMetric,
+    testRows: ytest.length,
+    ranked: ranked,
+    summaryPlain: summary.replace(/<[^>]+>/g, '')
+  };
+
+  document.getElementById('algoStage').classList.add('hidden');
+  document.getElementById('resultsStage').classList.remove('hidden');
+  setStep(4);
+}
+
+function runAlgorithm(algo, Xtrain, ytrain, Xtest, ytest, rngFn) {
+  let algoLabel = '', importanceRaw = new Array(numericFeatureCols.length).fill(0), headlineMetric = 0, confidenceMetric = 0;
+
+  if (algo === 'knn') {
+    algoLabel = 'K Nearest Neighbors';
+    const k = Math.min(5, Xtrain.length);
+    let correct = 0;
+    Xtest.forEach((pt, i) => { const pred = parseInt(knnPredict(Xtrain, ytrain, pt, k)); if (pred === ytest[i]) correct++; });
+    const accuracy = ytest.length ? correct / ytest.length : 0;
+    importanceRaw = correlationImportance(Xtrain, ytrain);
+    headlineMetric = accuracy; confidenceMetric = accuracy;
+  } else if (algo === 'tree') {
+    algoLabel = 'Decision Tree';
+    const importanceObj = {};
+    const tree = buildTree(Xtrain, ytrain, 0, 4, importanceObj);
+    let correct = 0;
+    Xtest.forEach((pt, i) => { const pred = treePredict(tree, pt); if (pred === ytest[i]) correct++; });
+    const accuracy = ytest.length ? correct / ytest.length : 0;
+    numericFeatureCols.forEach((_, j) => importanceRaw[j] = importanceObj[j] || 0);
+    headlineMetric = accuracy; confidenceMetric = accuracy;
+  } else if (algo === 'randomforest') {
+    algoLabel = 'Random Forest';
+    const nTrees = 15;
+    const maxFeatures = Math.max(1, Math.round(Math.sqrt(numericFeatureCols.length)));
+    const importanceAgg = {};
+    const trees = [];
+    for (let t = 0; t < nTrees; t++) {
+      const { X: bx, y: by } = bootstrapSample(Xtrain, ytrain, rngFn);
+      const importanceObj = {};
+      const tree = buildTreeRF(bx, by, 0, 4, importanceObj, rngFn, maxFeatures);
+      trees.push(tree);
+      Object.keys(importanceObj).forEach(k2 => { importanceAgg[k2] = (importanceAgg[k2] || 0) + importanceObj[k2]; });
+    }
+    let correct = 0;
+    Xtest.forEach((pt, i) => { const pred = forestPredict(trees, pt); if (pred === ytest[i]) correct++; });
+    const accuracy = ytest.length ? correct / ytest.length : 0;
+    numericFeatureCols.forEach((_, j) => importanceRaw[j] = importanceAgg[j] || 0);
+    headlineMetric = accuracy; confidenceMetric = accuracy;
+  } else if (algo === 'logistic') {
+    algoLabel = 'Logistic Regression';
+    const model = logisticFit(Xtrain, ytrain);
+    let correct = 0;
+    Xtest.forEach((pt, i) => { const pred = logisticPredict(model, pt); if (pred === ytest[i]) correct++; });
+    const accuracy = ytest.length ? correct / ytest.length : 0;
+    importanceRaw = model.weights.map(w => Math.abs(w));
+    headlineMetric = accuracy; confidenceMetric = accuracy;
+  }
+
+  const caption = confidenceMetric >= 0.75 ? 'This pattern is strong.' : confidenceMetric >= 0.55 ? 'This pattern is moderate, worth a closer look.' : 'This pattern is weak, treat with caution.';
+  const totalImp = importanceRaw.reduce((a, b) => a + b, 0) || 1;
+  const importancePct = importanceRaw.map(v => v / totalImp);
+  const ranked = numericFeatureCols.map((name, i) => ({ name, pct: importancePct[i] })).sort((a, b) => b.pct - a.pct);
+  return { algoLabel, headlineMetric, confidenceMetric, caption, ranked, testRows: ytest.length };
+}
+
+function renderComparePanel(r) {
+  return `<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px;">
+    <div style="font-family: var(--font-display); font-weight: 600; font-size: 15px; margin-bottom: 14px;">${r.algoLabel}</div>
+    <div class="metric-row" style="margin-bottom: 16px;">
+      <div><div class="metric-label">Accuracy</div><div class="metric-value aqua" style="font-size: 20px;">${Math.round(r.headlineMetric * 100)}%</div></div>
+      <div><div class="metric-label">Test rows</div><div class="metric-value" style="font-size: 20px;">${r.testRows}</div></div>
+    </div>
+    <div class="target-label">Feature importance</div>
+    ${r.ranked.slice(0, 5).map(f => `
+      <div class="importance-row">
+        <div class="importance-name">${f.name}</div>
+        <div class="importance-track"><div class="importance-fill" style="width:${Math.round(f.pct * 100)}%"></div></div>
+        <div class="importance-pct">${Math.round(f.pct * 100)}%</div>
+      </div>`).join('')}
+    <div class="confidence-bar" style="margin-top: 14px;"><div class="confidence-fill" style="width:${Math.round(r.confidenceMetric * 100)}%"></div></div>
+    <div class="confidence-caption">${r.caption}</div>
+  </div>`;
+}
+
+function runCompare() {
+  if (selectedAlgos.length !== 2 || numericFeatureCols.length === 0) return;
+  const { X, y } = buildDataset(selectedMode);
+  const { Xs } = standardize(X);
+  const fileLabel = document.getElementById('fileName').textContent;
+  const featureKey = numericFeatureCols.join(',');
+
+  const splitRng = mulberry32(hashSeed(fileLabel + '|' + selectedTarget + '|compare-split|' + featureKey + '|' + X.length));
+  const { Xtrain, ytrain, Xtest, ytest } = shuffleSplit(Xs, y, 0.8, splitRng);
+
+  const rngA = mulberry32(hashSeed(fileLabel + '|' + selectedTarget + '|' + selectedAlgos[0] + '|' + featureKey + '|' + X.length));
+  const rngB = mulberry32(hashSeed(fileLabel + '|' + selectedTarget + '|' + selectedAlgos[1] + '|' + featureKey + '|' + X.length));
+
+  const resultA = runAlgorithm(selectedAlgos[0], Xtrain, ytrain, Xtest, ytest, rngA);
+  const resultB = runAlgorithm(selectedAlgos[1], Xtrain, ytrain, Xtest, ytest, rngB);
+
+  document.getElementById('compareTargetName').textContent = selectedTarget;
+  document.getElementById('comparePanels').innerHTML = renderComparePanel(resultA) + renderComparePanel(resultB);
+
+  document.getElementById('algoStage').classList.add('hidden');
+  document.getElementById('resultsCompareStage').classList.remove('hidden');
+  setStep(4);
+}
+
+function exportPDF() {
+  const d = window._resultsSnapshot;
+  if (!d || !window.jspdf) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const marginX = 48;
+  const pageWidth = 595;
+
+  let y = drawLucidGlassHeader(doc, 'Model summary export', d.fileLabel + ', ' + d.rows + ' rows, ' + d.cols + ' columns');
+
+  const row = (label, value, valueColor) => {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(90, 98, 112);
+    doc.text(label, marginX, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(valueColor ? valueColor[0] : 18, valueColor ? valueColor[1] : 20, valueColor ? valueColor[2] : 26);
+    doc.text(String(value), marginX + 120, y);
+    y += 20;
+  };
+
+  row('Dataset', d.fileLabel);
+  row('Rows / Columns', d.rows + ' rows, ' + d.cols + ' columns');
+  row('Target', d.target);
+  row('Algorithm', d.algoLabel);
+  const metricLabel = d.mode === 'regression' ? 'R2 score' : 'Accuracy';
+  const metricValue = d.mode === 'regression' ? d.headlineMetric.toFixed(2) : Math.round(d.headlineMetric * 100) + '%';
+  row(metricLabel, metricValue, [15, 158, 144]);
+  row('Test rows', d.testRows);
+
+  y += 16;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(18, 20, 26);
+  doc.text('Feature importance', marginX, y);
+  y += 22;
+
+  const barMaxWidth = 260;
+  d.ranked.forEach(r => {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(90, 98, 112);
+    doc.text(r.name, marginX, y + 7);
+    doc.setFillColor(228, 229, 236);
+    doc.rect(marginX + 130, y, barMaxWidth, 7, 'F');
+    doc.setFillColor(75, 95, 238);
+    doc.rect(marginX + 130, y, Math.max(2, barMaxWidth * r.pct), 7, 'F');
+    doc.setTextColor(90, 98, 112);
+    doc.text(Math.round(r.pct * 100) + '%', marginX + 130 + barMaxWidth + 10, y + 7);
+    y += 20;
+  });
+
+  y += 20;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(18, 20, 26);
+  doc.text('What the model learned', marginX, y);
+  y += 20;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10.5);
+  doc.setTextColor(50, 55, 65);
+  const wrapped = doc.splitTextToSize(d.summaryPlain, pageWidth - marginX * 2);
+  doc.text(wrapped, marginX, y);
+
+  doc.setFontSize(8.5);
+  doc.setTextColor(150, 155, 165);
+  doc.text('Generated locally in your browser. No data left your device.', marginX, 800);
+
+  doc.save((d.target || 'lucidglass') + '-summary.pdf');
+}
+</script>
+<script>
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      const loader = document.getElementById('loadingScreen');
+      loader.classList.add('fade-out');
+      setTimeout(() => { loader.style.display = 'none'; }, 650);
+    }, 900);
+  });
+</script>
+</body>
+</html>
